@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: MovieRouteParams) {
       return NextResponse.json({ error: 'Invalid movie ID' }, { status: 400 });
     }
 
-    const movie = getMovieById(movieId);
+    const movie = await getMovieById(movieId);
 
     if (!movie) {
       return NextResponse.json({ error: 'Movie not found' }, { status: 404 });

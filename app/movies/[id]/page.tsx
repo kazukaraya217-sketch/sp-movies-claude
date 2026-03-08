@@ -16,7 +16,7 @@ export default async function MovieDetailPage({ params }: MovieDetailPageProps) 
     notFound();
   }
 
-  const movie = getMovieById(movieId);
+  const movie = await getMovieById(movieId);
 
   if (!movie) {
     notFound();
