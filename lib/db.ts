@@ -2,7 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 
-const DB_PATH = path.join(process.cwd(), 'data');
+// Use /tmp for Vercel serverless (writable directory)
+// Fallback to process.cwd() for local development
+const isVercel = process.env.VERCEL === '1';
+const DB_PATH = isVercel ? '/tmp/data' : path.join(process.cwd(), 'data');
 
 // Ensure data directory exists
 if (!fs.existsSync(DB_PATH)) {
@@ -48,8 +51,12 @@ export interface Admin {
 
 // Movie functions
 export function getAllMovies(): Movie[] {
-  const data = fs.readFileSync(MOVIES_FILE, 'utf-8');
-  return JSON.parse(data);
+  try {
+    const data = fs.readFileSync(MOVIES_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
 }
 
 export function getMovieById(id: number): Movie | undefined {
@@ -91,15 +98,27 @@ export function deleteMovie(id: number): boolean {
 
 // Admin functions
 export function verifyAdmin(username: string, password: string): boolean {
-  const data = fs.readFileSync(ADMIN_FILE, 'utf-8');
-  const admins: Admin[] = JSON.parse(data);
-  const admin = admins.find(a => a.username === username);
-  if (!admin) return false;
-  return bcrypt.compareSync(password, admin.password);
+  try {
+    const data = fs.readFileSync(ADMIN_FILE, 'utf-8');
+    const admins: Admin[] = JSON.parse(data);
+    const admin = admins.find(a => a.username === username);
+    if (!admin) return false;
+    return bcrypt.compareSync(password, admin.password);
+  } catch {
+    // If admin file doesn't exist, check default credentials
+    if (username === 'Satyaa' && password === 'Satyaa1234') {
+      return true;
+    }
+    return false;
+  }
 }
 
 export function getAdmin(): Admin | undefined {
-  const data = fs.readFileSync(ADMIN_FILE, 'utf-8');
-  const admins: Admin[] = JSON.parse(data);
-  return admins[0];
+  try {
+    const data = fs.readFileSync(ADMIN_FILE, 'utf-8');
+    const admins: Admin[] = JSON.parse(data);
+    return admins[0];
+  } catch {
+    return undefined;
+  }
 }
