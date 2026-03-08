@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
-    const movie = createMovie({
+    const movie = await createMovie({
       title,
       description: description || '',
       poster_url: poster_url || '',

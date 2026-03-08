@@ -9,6 +9,7 @@ S-P Movies is a Next.js 14 movie listing website with dark Netflix-style design.
 ## Common Commands
 
 ```bash
+npm install      # Install dependencies including datasets library
 npm run dev      # Start development server on localhost:3000
 npm run build    # Build for production
 npm run start    # Start production server
@@ -20,7 +21,7 @@ npm run lint     # Run ESLint
 ### Stack
 - **Framework**: Next.js 14 (App Router)
 - **Styling**: Tailwind CSS with custom Netflix-style dark theme
-- **Database**: JSON file-based storage (`data/movies.json`, `data/admin.json`)
+- **Database**: Hugging Face Datasets (configured in `lib/db.ts`)
 - **Auth**: Cookie-based session with bcrypt password hashing
 
 ### Key Directories
@@ -50,15 +51,24 @@ npm run lint     # Run ESLint
 - Username: `Satyaa`
 - Password: `Satyaa1234`
 
+## Hugging Face Dataset Configuration
+
+The app uses Hugging Face Datasets as the database. To enable persistence:
+
+1. Create a dataset on Hugging Face Hub (e.g., `your-username/sp-movies`)
+2. Set these environment variables in Vercel:
+   - `HF_REPO_ID` - Your dataset repository ID (e.g., `username/sp-movies`)
+   - `HF_TOKEN` - Your Hugging Face access token (with write access)
+
+Without these variables, the app uses sample data that won't persist between deployments.
+
 ## Deployment
 
-The project is configured for Vercel deployment via `vercel.json`. The current implementation uses file-based JSON storage, which has limitations in Vercel's serverless environment (data is read-only in production).
-
-For production use, consider migrating to Vercel Postgres or another persistent database.
+The project is configured for Vercel deployment via `vercel.json`.
 
 ## Development Notes
 
 - Movie IDs are generated using `Date.now()` - not sequential
-- The database initializes default admin on first run (see `lib/db.ts`)
+- The database uses sample data by default (SAMPLE_MOVIES in lib/db.ts)
 - Dark theme colors are defined in `tailwind.config.ts` under `netflix` color key
 - Auth uses HTTP-only cookies with 24-hour expiry

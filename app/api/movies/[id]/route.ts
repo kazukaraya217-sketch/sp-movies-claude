@@ -45,7 +45,7 @@ export async function PUT(request: NextRequest, { params }: MovieRouteParams) {
     const body = await request.json();
     const { title, description, poster_url, telegram_link, terabox_link, year, genre } = body;
 
-    const movie = updateMovie(movieId, {
+    const movie = await updateMovie(movieId, {
       title,
       description,
       poster_url,
@@ -80,7 +80,7 @@ export async function DELETE(request: NextRequest, { params }: MovieRouteParams)
       return NextResponse.json({ error: 'Invalid movie ID' }, { status: 400 });
     }
 
-    const deleted = deleteMovie(movieId);
+    const deleted = await deleteMovie(movieId);
 
     if (!deleted) {
       return NextResponse.json({ error: 'Movie not found' }, { status: 404 });

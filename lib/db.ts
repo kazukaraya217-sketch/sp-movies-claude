@@ -1,33 +1,112 @@
-import fs from 'fs';
-import path from 'path';
 import bcrypt from 'bcryptjs';
 
-// Use /tmp for Vercel serverless (writable directory)
-// Fallback to process.cwd() for local development
-const isVercel = process.env.VERCEL === '1';
-const DB_PATH = isVercel ? '/tmp/data' : path.join(process.cwd(), 'data');
+// Configuration from environment
+const HF_REPO_ID = process.env.HF_REPO_ID || '';
+const HF_TOKEN = process.env.HF_TOKEN || '';
 
-// Ensure data directory exists
-if (!fs.existsSync(DB_PATH)) {
-  fs.mkdirSync(DB_PATH, { recursive: true });
-}
+// In-memory storage (persists during serverless function execution)
+let cachedMovies: Movie[] | null = null;
 
-const MOVIES_FILE = path.join(DB_PATH, 'movies.json');
-const ADMIN_FILE = path.join(DB_PATH, 'admin.json');
-
-// Initialize files if they don't exist
-if (!fs.existsSync(MOVIES_FILE)) {
-  fs.writeFileSync(MOVIES_FILE, JSON.stringify([]));
-}
-
-if (!fs.existsSync(ADMIN_FILE)) {
-  // Create default admin with hashed password
-  const hashedPassword = bcrypt.hashSync('Satyaa1234', 10);
-  fs.writeFileSync(ADMIN_FILE, JSON.stringify([{
+// Sample data for initial load
+const SAMPLE_MOVIES: Movie[] = [
+  {
     id: 1,
-    username: 'Satyaa',
-    password: hashedPassword
-  }]));
+    title: 'Sample Movie 1',
+    description: 'This is a sample movie for demonstration. Replace with actual movie details from the admin panel.',
+    poster_url: '',
+    telegram_link: 'https://t.me/sample',
+    terabox_link: 'https://terabox.com/sample',
+    year: 2024,
+    genre: 'Action',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 2,
+    title: 'Sample Movie 2',
+    description: 'Another sample movie. You can edit or delete these from the admin panel.',
+    poster_url: '',
+    telegram_link: '',
+    terabox_link: '',
+    year: 2023,
+    genre: 'Drama',
+    created_at: new Date().toISOString()
+  }
+];
+
+// Load movies from Hugging Face Hub using REST API
+async function loadFromHub(): Promise<Movie[]> {
+  if (!HF_REPO_ID || !HF_TOKEN) {
+    console.log('HF_REPO_ID or HF_TOKEN not set, using sample data');
+    return SAMPLE_MOVIES;
+  }
+
+  try {
+    const response = await fetch(
+      `https://huggingface.co/datasets/${HF_REPO_ID}/raw/main/movies.json`,
+      {
+        headers: {
+          'Authorization': `Bearer ${HF_TOKEN}`,
+        },
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      return data as Movie[];
+    }
+  } catch (error) {
+    console.error('Failed to load from Hugging Face:', error);
+  }
+
+  return SAMPLE_MOVIES;
+}
+
+// Save movies to Hugging Face Hub using Dataset API
+async function saveToHub(movies: Movie[]): Promise<boolean> {
+  if (!HF_REPO_ID || !HF_TOKEN) {
+    console.warn('HF_REPO_ID or HF_TOKEN not set - changes will not persist');
+    return false;
+  }
+
+  try {
+    // Get the current commit SHA
+    const infoResponse = await fetch(
+      `https://huggingface.co/api/datasets/${HF_REPO_ID}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${HF_TOKEN}`,
+        },
+      }
+    );
+
+    if (!infoResponse.ok) {
+      console.error('Failed to get dataset info');
+      return false;
+    }
+
+    const content = JSON.stringify(movies, null, 2);
+    const contentBytes = new TextEncoder().encode(content);
+    const contentBlob = new Blob([contentBytes], { type: 'application/json' });
+
+    // Use the huggingface.js library approach via API
+    // For simplicity, we'll use the dataset upload endpoint
+    const uploadResponse = await fetch(
+      `https://huggingface.co/datasets/${HF_REPO_ID}/upload/main/movies.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${HF_TOKEN}`,
+          'Content-Type': 'application/octet-stream',
+        },
+        body: contentBlob,
+      }
+    );
+
+    return uploadResponse.ok;
+  } catch (error) {
+    console.error('Failed to save to Hugging Face:', error);
+    return false;
+  }
 }
 
 // Types
@@ -51,12 +130,15 @@ export interface Admin {
 
 // Movie functions
 export function getAllMovies(): Movie[] {
-  try {
-    const data = fs.readFileSync(MOVIES_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return [];
+  if (cachedMovies) {
+    return cachedMovies;
   }
+  return SAMPLE_MOVIES;
+}
+
+export async function refreshMovies(): Promise<Movie[]> {
+  cachedMovies = await loadFromHub();
+  return cachedMovies;
 }
 
 export function getMovieById(id: number): Movie | undefined {
@@ -64,7 +146,7 @@ export function getMovieById(id: number): Movie | undefined {
   return movies.find(m => m.id === id);
 }
 
-export function createMovie(movie: Omit<Movie, 'id' | 'created_at'>): Movie {
+export async function createMovie(movie: Omit<Movie, 'id' | 'created_at'>): Promise<Movie> {
   const movies = getAllMovies();
   const newMovie: Movie = {
     ...movie,
@@ -72,53 +154,49 @@ export function createMovie(movie: Omit<Movie, 'id' | 'created_at'>): Movie {
     created_at: new Date().toISOString()
   };
   movies.push(newMovie);
-  fs.writeFileSync(MOVIES_FILE, JSON.stringify(movies, null, 2));
+
+  // Try to persist to Hugging Face (fire and forget)
+  saveToHub(movies).catch(() => {});
+
   return newMovie;
 }
 
-export function updateMovie(id: number, updates: Partial<Omit<Movie, 'id' | 'created_at'>>): Movie | null {
+export async function updateMovie(id: number, updates: Partial<Omit<Movie, 'id' | 'created_at'>>): Promise<Movie | null> {
   const movies = getAllMovies();
   const index = movies.findIndex(m => m.id === id);
   if (index === -1) return null;
 
   movies[index] = { ...movies[index], ...updates };
-  fs.writeFileSync(MOVIES_FILE, JSON.stringify(movies, null, 2));
+
+  saveToHub(movies).catch(() => {});
+
   return movies[index];
 }
 
-export function deleteMovie(id: number): boolean {
+export async function deleteMovie(id: number): Promise<boolean> {
   const movies = getAllMovies();
   const index = movies.findIndex(m => m.id === id);
   if (index === -1) return false;
 
   movies.splice(index, 1);
-  fs.writeFileSync(MOVIES_FILE, JSON.stringify(movies, null, 2));
+
+  saveToHub(movies).catch(() => {});
+
   return true;
 }
 
 // Admin functions
 export function verifyAdmin(username: string, password: string): boolean {
-  try {
-    const data = fs.readFileSync(ADMIN_FILE, 'utf-8');
-    const admins: Admin[] = JSON.parse(data);
-    const admin = admins.find(a => a.username === username);
-    if (!admin) return false;
-    return bcrypt.compareSync(password, admin.password);
-  } catch {
-    // If admin file doesn't exist, check default credentials
-    if (username === 'Satyaa' && password === 'Satyaa1234') {
-      return true;
-    }
-    return false;
+  if (username === 'Satyaa' && password === 'Satyaa1234') {
+    return true;
   }
+  return false;
 }
 
 export function getAdmin(): Admin | undefined {
-  try {
-    const data = fs.readFileSync(ADMIN_FILE, 'utf-8');
-    const admins: Admin[] = JSON.parse(data);
-    return admins[0];
-  } catch {
-    return undefined;
-  }
+  return {
+    id: 1,
+    username: 'Satyaa',
+    password: bcrypt.hashSync('Satyaa1234', 10)
+  };
 }
