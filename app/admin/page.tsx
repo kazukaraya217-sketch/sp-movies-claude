@@ -41,12 +41,13 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    // Check auth
+    // Check auth - check the actual authenticated value in response body
     fetch('/api/auth/check', {
       credentials: 'include',
     })
-      .then(res => {
-        if (!res.ok) {
+      .then(res => res.json())
+      .then(data => {
+        if (!data.authenticated) {
           router.push('/admin/login');
         }
       })
