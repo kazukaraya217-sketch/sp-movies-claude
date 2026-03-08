@@ -26,7 +26,9 @@ export default function AdminDashboard() {
 
   const fetchMovies = useCallback(async () => {
     try {
-      const response = await fetch('/api/movies');
+      const response = await fetch('/api/movies', {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setMovies(data);
@@ -40,7 +42,9 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     // Check auth
-    fetch('/api/auth/check')
+    fetch('/api/auth/check', {
+      credentials: 'include',
+    })
       .then(res => {
         if (!res.ok) {
           router.push('/admin/login');
@@ -53,7 +57,10 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
       router.push('/');
     } catch (error) {
       console.error('Logout failed:', error);
@@ -61,7 +68,6 @@ export default function AdminDashboard() {
   };
 
   const handleAddMovie = (movieData: Omit<Movie, 'id' | 'created_at'>) => {
-    // Use client-side API call via fetch to POST
     const method = editingMovie ? 'PUT' : 'POST';
     const url = editingMovie ? `/api/movies/${editingMovie.id}` : '/api/movies';
 
@@ -69,6 +75,7 @@ export default function AdminDashboard() {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(movieData),
+      credentials: 'include',
     })
       .then(res => res.json())
       .then(data => {
@@ -76,22 +83,35 @@ export default function AdminDashboard() {
           fetchMovies();
           setShowForm(false);
           setEditingMovie(null);
+        } else if (data.error) {
+          alert('Error: ' + data.error);
         }
       })
-      .catch(console.error);
+      .catch(err => {
+        console.error('Error:', err);
+        alert('Failed to save movie');
+      });
   };
 
   const handleDelete = (id: number) => {
     if (!confirm('Are you sure you want to delete this movie?')) return;
 
-    fetch(`/api/movies/${id}`, { method: 'DELETE' })
+    fetch(`/api/movies/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
       .then(res => res.json())
       .then(data => {
         if (data.success) {
           fetchMovies();
+        } else if (data.error) {
+          alert('Error: ' + data.error);
         }
       })
-      .catch(console.error);
+      .catch(err => {
+        console.error('Error:', err);
+        alert('Failed to delete movie');
+      });
   };
 
   const handleEdit = (movie: Movie) => {

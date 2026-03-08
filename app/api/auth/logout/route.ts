@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
-import { logout } from '@/lib/auth';
 
 export async function POST() {
   try {
-    await logout();
-    return NextResponse.json({ success: true });
+    const response = NextResponse.json({ success: true });
+
+    // Explicitly clear the cookie
+    response.cookies.set('admin_session', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0, // Expire immediately
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error('Logout error:', error);
     return NextResponse.json(

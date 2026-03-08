@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { login } from '@/lib/auth';
+import { login, setAuthCookie } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,10 +13,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const success = await login(username, password);
+    // Use the admin credentials directly from db
+    const { verifyAdmin } = await import('@/lib/db');
+    if (verifyAdmin(username, password)) {
+      // Set cookie and return success
+      const response = NextResponse.json({ success: true });
+      const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
 
-    if (success) {
-      return NextResponse.json({ success: true });
+      response.cookies.set('admin_session', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24, // 24 hours
+        path: '/',
+      });
+
+      return response;
     } else {
       return NextResponse.json(
         { error: 'Invalid username or password' },

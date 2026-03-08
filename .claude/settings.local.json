@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install 2>&1)",
+      "Bash(npm run build 2>&1)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000 2>/dev/null || echo \"Server not responding\")",
+      "Bash(git init)",
+      "Bash(git add app/ components/ lib/ next.config.js package.json package-lock.json postcss.config.js tailwind.config.ts tsconfig.json vercel.json .gitignore)",
+      "Bash(git commit -m \"$\\(cat <<'EOF'\nInitial commit: S-P Movies website\n\n- Next.js 14 with App Router and Tailwind CSS\n- Dark theme with Netflix-style design\n- Movie listing page with responsive grid\n- Movie detail page with Telegram/Terabox download buttons\n- Admin panel with authentication \\(Satyaa/Satyaa1234\\)\n- Full CRUD operations for movies\n- API routes for movies and auth\n- Vercel deployment configuration\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git config user.email \"claude@anthropic.com\" && git config user.name \"Claude\")",
+      "Bash(git remote add origin https://github.com/kazukaraya217-sketch/sp-movies-claude.git)",
+      "Bash(git push -u origin master 2>&1)",
+      "Bash(git add CLAUDE.md && git commit -m \"$\\(cat <<'EOF'\nAdd CLAUDE.md for future Claude Code instances\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push origin master)",
+      "Bash(git add lib/db.ts && git commit -m \"$\\(cat <<'EOF'\nFix: Use /tmp directory for Vercel serverless\n\n- Use /tmp which is writable in Vercel serverless environment\n- Add error handling for file read operations\n- Add fallback for admin verification if file missing\n\nNote: Data in /tmp is ephemeral. For persistent storage on Vercel,\nconsider using Vercel KV or Vercel Postgres.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npm view datasets versions --json 2>/dev/null | tail -20)",
+      "Bash(npm view @huggingface/hub versions --json 2>/dev/null | tail -20)",
+      "Bash(git add -A && git status)",
+      "Bash(git restore --staged .claude/settings.local.json data/)",
+      "Bash(git commit -m \"$\\(cat <<'EOF'\nAdd Hugging Face dataset support for movie storage\n\n- Replace file-based storage with Hugging Face Datasets support\n- Uses REST API to load/save movies to HF Hub\n- Requires HF_REPO_ID and HF_TOKEN env vars for persistence\n- Falls back to sample data when not configured\n- Update API routes to handle async database operations\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git add CLAUDE.md && git commit -m \"$\\(cat <<'EOF'\nUpdate CLAUDE.md for clarity\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git add -A && git commit -m \"$\\(cat <<'EOF'\nFix: Auth cookie handling and credentials\n\n- Fix login API to properly set cookie in response\n- Add credentials: 'include' to all fetch calls for auth\n- Update logout to explicitly clear cookie in response\n- Add error alerts to admin dashboard for better feedback\n\nThe issue was that cookies weren't being sent with API requests,\ncausing auth to fail silently when adding/deleting movies.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}
